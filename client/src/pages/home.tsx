@@ -180,7 +180,7 @@ export default function HomePage() {
       </div>
 
       {/* Event list grouped by day */}
-      <section className="flex flex-col gap-1">
+      <section className="flex flex-col gap-1 sm:gap-3">
         {isLoading && (
           <div className="flex flex-col gap-3">
             {[1, 2, 3].map(i => (
@@ -250,14 +250,15 @@ export default function HomePage() {
           ))
         ) : (
           // Flat list (nearest first)
-          displayEvents.map(event => (
-            <div key={event.id} className="mb-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {displayEvents.map(event => (
               <EventCard
+                key={event.id}
                 event={event}
                 onClick={() => setSelectedEvent(event)}
               />
-            </div>
-          ))
+            ))}
+          </div>
         )}
       </section>
 

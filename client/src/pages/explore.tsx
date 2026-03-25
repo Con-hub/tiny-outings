@@ -107,13 +107,15 @@ export default function ExplorePage() {
             </div>
           </div>
         )}
-        {places?.map(place => (
-          <PlaceCard
-            key={place.id}
-            place={place}
-            onClick={() => setSelectedPlace(place)}
-          />
-        ))}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {places?.map(place => (
+            <PlaceCard
+              key={place.id}
+              place={place}
+              onClick={() => setSelectedPlace(place)}
+            />
+          ))}
+        </div>
       </section>
 
       <DetailSheet

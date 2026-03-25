@@ -89,7 +89,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <div className="flex flex-col min-h-screen max-w-lg mx-auto bg-background">
+    <div className="flex flex-col min-h-screen max-w-3xl mx-auto bg-background">
       {/* Header */}
       <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border px-4 py-3">
         <div className="flex items-center justify-between gap-2">
@@ -129,7 +129,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
       {/* Bottom tabs */}
       <nav className="fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-t border-border">
-        <div className="flex items-center justify-around max-w-lg mx-auto py-1 safe-bottom">
+        <div className="flex items-center justify-around max-w-3xl mx-auto py-1 safe-bottom">
           {TABS.map(tab => <TabItem key={tab.path} {...tab} />)}
         </div>
       </nav>
