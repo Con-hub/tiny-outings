@@ -11,6 +11,77 @@ import { eq, and, like, inArray } from "drizzle-orm";
 
 const sqlite = new Database("data.db");
 sqlite.pragma("journal_mode = WAL");
+
+// Create tables if they don't exist (needed for fresh deploys like Render)
+sqlite.exec(`
+  CREATE TABLE IF NOT EXISTS events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT NOT NULL,
+    description TEXT NOT NULL,
+    category TEXT NOT NULL,
+    date TEXT NOT NULL,
+    start_time TEXT NOT NULL,
+    end_time TEXT,
+    venue_name TEXT NOT NULL,
+    address TEXT NOT NULL,
+    city TEXT NOT NULL,
+    country TEXT NOT NULL,
+    latitude REAL NOT NULL,
+    longitude REAL NOT NULL,
+    cost REAL NOT NULL DEFAULT 0,
+    currency TEXT NOT NULL DEFAULT 'GBP',
+    is_free INTEGER NOT NULL DEFAULT 1,
+    age_bands TEXT NOT NULL,
+    recurring INTEGER NOT NULL DEFAULT 0,
+    recurrence_pattern TEXT,
+    child_features TEXT NOT NULL DEFAULT '[]',
+    external_url TEXT,
+    is_featured INTEGER NOT NULL DEFAULT 0
+  );
+  CREATE TABLE IF NOT EXISTS places (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    description TEXT NOT NULL,
+    category TEXT NOT NULL,
+    address TEXT NOT NULL,
+    city TEXT NOT NULL,
+    country TEXT NOT NULL,
+    latitude REAL NOT NULL,
+    longitude REAL NOT NULL,
+    age_bands TEXT NOT NULL,
+    child_features TEXT NOT NULL DEFAULT '[]',
+    opening_hours TEXT,
+    website TEXT,
+    is_featured INTEGER NOT NULL DEFAULT 0
+  );
+  CREATE TABLE IF NOT EXISTS user_profiles (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    location_city TEXT NOT NULL DEFAULT 'Belfast',
+    location_lat REAL NOT NULL DEFAULT 54.5973,
+    location_lng REAL NOT NULL DEFAULT -5.9301,
+    child_name TEXT,
+    child_dob TEXT,
+    preferred_currency TEXT NOT NULL DEFAULT 'GBP',
+    distance_radius INTEGER NOT NULL DEFAULT 5
+  );
+  CREATE TABLE IF NOT EXISTS sponsors (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    tagline TEXT NOT NULL,
+    category TEXT NOT NULL,
+    city TEXT NOT NULL,
+    website TEXT,
+    logo_emoji TEXT NOT NULL DEFAULT '🏪',
+    is_active INTEGER NOT NULL DEFAULT 1
+  );
+  CREATE TABLE IF NOT EXISTS favourites (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    event_id INTEGER,
+    place_id INTEGER
+  );
+`);
+
 export const db = drizzle(sqlite);
 
 // Haversine distance in miles
