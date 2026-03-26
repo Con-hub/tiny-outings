@@ -77,6 +77,40 @@ export function formatCost(cost: number, currency: string, isFree: boolean): str
   return `${symbol}${cost.toFixed(cost % 1 === 0 ? 0 : 2)}`;
 }
 
+/** Get the next occurrence date string (YYYY-MM-DD) for a recurring event.
+ * If the event isn't recurring or pattern can't be parsed, returns the original date. */
+export function getNextOccurrenceDate(event: { date: string; recurring: boolean; recurrencePattern?: string | null }): string {
+  if (!event.recurring || !event.recurrencePattern) return event.date;
+  const now = new Date();
+  const todayStr = now.toISOString().split("T")[0];
+  // If the stored date is today or in the future, use it directly
+  if (event.date >= todayStr) return event.date;
+
+  const pattern = event.recurrencePattern.toLowerCase();
+  const dayMap: Record<string, number> = {
+    sunday: 0, monday: 1, tuesday: 2, wednesday: 3,
+    thursday: 4, friday: 5, saturday: 6,
+  };
+
+  // Find the target day from the pattern
+  let targetDay = -1;
+  for (const [name, num] of Object.entries(dayMap)) {
+    if (pattern.includes(name)) { targetDay = num; break; }
+  }
+  // Fallback: derive from the original event date
+  if (targetDay === -1) {
+    targetDay = new Date(event.date + "T00:00:00").getDay();
+  }
+
+  // Calculate next occurrence (today or future)
+  const currentDay = now.getDay();
+  let daysUntil = (targetDay - currentDay + 7) % 7;
+  // If it's today's day, include today
+  const nextDate = new Date(now);
+  nextDate.setDate(nextDate.getDate() + daysUntil);
+  return nextDate.toISOString().split("T")[0];
+}
+
 /** Friendly date formatting: Today, Tomorrow, day name, or "Mon 25 Mar" */
 export function formatFriendlyDate(dateStr: string): string {
   const now = new Date();

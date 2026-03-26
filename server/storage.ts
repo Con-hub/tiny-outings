@@ -197,19 +197,47 @@ export class DatabaseStorage implements IStorage {
       const saturday = new Date(now.getTime() + saturdayOffset * 86400000).toISOString().split("T")[0];
       const sunday = new Date(now.getTime() + (saturdayOffset + 1) * 86400000).toISOString().split("T")[0];
 
+      // Helper: check if a recurring event falls on a given day number (0=Sun, 6=Sat)
+      const DAY_NAMES = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+      const recursFallsOnDay = (e: Event, targetDayNum: number): boolean => {
+        if (!e.recurring || !e.recurrencePattern) return false;
+        const pattern = e.recurrencePattern.toLowerCase();
+        // Check if pattern mentions the target day name
+        if (pattern.includes(DAY_NAMES[targetDayNum])) return true;
+        // "Every day" / "Daily" patterns match any day
+        if (pattern.includes("every day") || pattern.includes("daily")) return true;
+        // "Every week" without a specific day — use the original event date's day
+        if (pattern.includes("weekly") || pattern.includes("every week")) {
+          const eventDate = new Date(e.date + "T00:00:00");
+          return eventDate.getDay() === targetDayNum;
+        }
+        return false;
+      };
+
+      // Helper: check if a recurring event falls on any of the given day numbers
+      const recursFallsOnAny = (e: Event, targetDays: number[]): boolean => {
+        return targetDays.some(d => recursFallsOnDay(e, d));
+      };
+
       switch (filters.day) {
         case "today":
-          allEvents = allEvents.filter(e => e.date === today || e.recurring);
+          allEvents = allEvents.filter(e => e.date === today || recursFallsOnDay(e, dayOfWeek));
           break;
-        case "tomorrow":
-          allEvents = allEvents.filter(e => e.date === tomorrow || e.recurring);
+        case "tomorrow": {
+          const tomorrowDayNum = (dayOfWeek + 1) % 7;
+          allEvents = allEvents.filter(e => e.date === tomorrow || recursFallsOnDay(e, tomorrowDayNum));
           break;
-        case "this-week":
-          allEvents = allEvents.filter(e => (e.date >= today && e.date <= weekEnd) || e.recurring);
+        }
+        case "this-week": {
+          // Collect the day numbers for the next 7 days
+          const weekDays = Array.from({ length: 7 }, (_, i) => (dayOfWeek + i) % 7);
+          allEvents = allEvents.filter(e => (e.date >= today && e.date <= weekEnd) || recursFallsOnAny(e, weekDays));
           break;
-        case "weekend":
-          allEvents = allEvents.filter(e => (e.date === saturday || e.date === sunday) || e.recurring);
+        }
+        case "weekend": {
+          allEvents = allEvents.filter(e => (e.date === saturday || e.date === sunday) || recursFallsOnAny(e, [6, 0]));
           break;
+        }
       }
     }
 

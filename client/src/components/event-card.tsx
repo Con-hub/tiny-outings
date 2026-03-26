@@ -2,7 +2,7 @@ import { Card } from "@/components/ui/card";
 import { AgeBandBadge } from "./age-band-badge";
 import { MapPin, Clock, Calendar } from "lucide-react";
 import {
-  formatCost, formatFriendlyDate, pickCardBadge,
+  formatCost, formatFriendlyDate, pickCardBadge, getNextOccurrenceDate,
 } from "@/lib/constants";
 import type { Event } from "@shared/schema";
 
@@ -15,6 +15,7 @@ interface EventCardProps {
 export function EventCard({ event, onClick, compact }: EventCardProps) {
   const ageBands: string[] = JSON.parse(event.ageBands);
   const badge = pickCardBadge(event);
+  const displayDate = getNextOccurrenceDate(event);
 
   return (
     <Card
@@ -61,7 +62,7 @@ export function EventCard({ event, onClick, compact }: EventCardProps) {
         <div className="flex items-center gap-2 text-[13px] text-muted-foreground flex-wrap">
           <span className="inline-flex items-center gap-1">
             <Calendar className="w-3.5 h-3.5 flex-shrink-0" />
-            {formatFriendlyDate(event.date)}
+            {formatFriendlyDate(displayDate)}
           </span>
           <span className="text-border">·</span>
           <span className="inline-flex items-center gap-1">

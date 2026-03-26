@@ -5,7 +5,7 @@ import { DetailSheet } from "@/components/detail-sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Heart, MapPin, Calendar, Clock, X, Sparkles } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { formatFriendlyDate } from "@/lib/constants";
+import { formatFriendlyDate, getNextOccurrenceDate } from "@/lib/constants";
 import type { Event, Place } from "@shared/schema";
 
 interface EnrichedFav {
@@ -83,7 +83,7 @@ export default function FavouritesPage() {
                     <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
                       <span className="inline-flex items-center gap-1">
                         <Calendar className="w-3 h-3" />
-                        {formatFriendlyDate(ev.date)}
+                        {formatFriendlyDate(getNextOccurrenceDate(ev))}
                       </span>
                       <span className="inline-flex items-center gap-1">
                         <Clock className="w-3 h-3" />

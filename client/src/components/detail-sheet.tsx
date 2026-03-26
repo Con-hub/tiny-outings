@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { AgeBandBadge } from "./age-band-badge";
 import { FeatureBadge } from "./feature-badge";
 import { Heart, MapPin, Clock, Navigation, ExternalLink, Calendar, RotateCw, Share2, CalendarPlus } from "lucide-react";
-import { formatDistance, formatCost, getCategoryLabel, formatFriendlyDate, getNextRecurringDates, generateICS, downloadFile, getHelperSentence } from "@/lib/constants";
+import { formatDistance, formatCost, getCategoryLabel, formatFriendlyDate, getNextRecurringDates, generateICS, downloadFile, getHelperSentence, getNextOccurrenceDate } from "@/lib/constants";
 import { apiRequest } from "@/lib/queryClient";
 import { queryClient } from "@/lib/queryClient";
 import { useQuery } from "@tanstack/react-query";
@@ -76,7 +76,8 @@ export function DetailSheet({ open, onClose, event, place }: DetailSheetProps) {
 
   const handleCalendar = () => {
     if (!isEvent) return;
-    const ics = generateICS(event!);
+    const nextDate = getNextOccurrenceDate(event!);
+    const ics = generateICS({ ...event!, date: nextDate });
     downloadFile(ics, `${event!.title.replace(/[^a-zA-Z0-9]/g, "-")}.ics`, "text/calendar");
     toast({ title: "Calendar file downloaded", description: "Open it to add this event to your calendar" });
   };
@@ -106,7 +107,7 @@ export function DetailSheet({ open, onClose, event, place }: DetailSheetProps) {
             <div className="rounded-xl bg-accent/40 p-3.5 flex flex-col gap-2.5" data-testid="event-key-info">
               <div className="flex items-center gap-2.5 text-sm">
                 <Calendar className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                <span className="font-medium">{formatFriendlyDate(event!.date)}</span>
+                <span className="font-medium">{formatFriendlyDate(getNextOccurrenceDate(event!))}</span>
                 <span className="text-muted-foreground">
                   {event!.startTime}{event!.endTime ? `\u2013${event!.endTime}` : ""}
                 </span>
