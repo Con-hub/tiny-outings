@@ -136,6 +136,72 @@ export function isStartingSoon(dateStr: string, startTime: string): boolean {
   return diff > 0 && diff <= 60;
 }
 
+/** Generate an .ics calendar file string for an event */
+export function generateICS(event: { title: string; description: string; date: string; startTime: string; endTime?: string | null; venueName: string; address: string }): string {
+  const dtStart = event.date.replace(/-/g, "") + "T" + event.startTime.replace(":", "") + "00";
+  const dtEnd = event.endTime
+    ? event.date.replace(/-/g, "") + "T" + event.endTime.replace(":", "") + "00"
+    : event.date.replace(/-/g, "") + "T" + String(Number(event.startTime.split(":")[0]) + 1).padStart(2, "0") + event.startTime.split(":")[1] + "00";
+  const uid = `tiny-outings-${event.date}-${event.startTime}-${Math.random().toString(36).slice(2, 8)}@tinyoutings.app`;
+  return [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//Tiny Outings//EN",
+    "BEGIN:VEVENT",
+    `DTSTART:${dtStart}`,
+    `DTEND:${dtEnd}`,
+    `SUMMARY:${event.title}`,
+    `DESCRIPTION:${event.description.slice(0, 200).replace(/[\n,;]/g, " ")}`,
+    `LOCATION:${event.venueName}\\, ${event.address}`,
+    `UID:${uid}`,
+    "END:VEVENT",
+    "END:VCALENDAR",
+  ].join("\r\n");
+}
+
+/** Download a string as a file */
+export function downloadFile(content: string, filename: string, type: string) {
+  const blob = new Blob([content], { type });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+/** Pick the single best badge for an event card */
+export function pickCardBadge(event: { isFree: boolean; category: string; childFeatures: string }): { label: string; className: string } | null {
+  const features: string[] = JSON.parse(event.childFeatures);
+  // Priority order: Free, Indoor (by category), Baby-friendly, Buggy-friendly
+  if (event.isFree) return { label: "Free", className: "bg-primary/10 text-primary" };
+  const indoorCats = ["classes", "community", "arts", "music", "storytime", "indoor"];
+  if (indoorCats.includes(event.category)) return { label: "Indoor", className: "bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300" };
+  if (features.includes("buggy-friendly")) return { label: "Buggy friendly", className: "bg-accent text-accent-foreground" };
+  if (features.includes("baby-changing")) return { label: "Baby-friendly", className: "bg-accent text-accent-foreground" };
+  return null;
+}
+
+/** Helper sentence for event context */
+export function getHelperSentence(event: { category: string; isFree: boolean; childFeatures: string; recurring: boolean }): string {
+  const features: string[] = JSON.parse(event.childFeatures);
+  const indoor = ["classes", "community", "arts", "music", "storytime", "indoor"].includes(event.category);
+  const hasBuggy = features.includes("buggy-friendly");
+  const hasBreastfeeding = features.includes("breastfeeding-welcome");
+  
+  if (indoor && hasBuggy) return "Great for a rainy day. Buggy friendly.";
+  if (indoor && hasBreastfeeding) return "Indoor session. Breastfeeding welcome.";
+  if (indoor) return "Indoor event — good for any weather.";
+  if (event.category === "outdoor" && hasBuggy) return "Good with a pram. Outdoor activity.";
+  if (event.category === "outdoor") return "Outdoor activity — dress for the weather.";
+  if (event.category === "wellness") return "A little time for you, too.";
+  if (event.recurring) return "Runs regularly — a great one to get into.";
+  if (event.isFree) return "Free to attend. No booking needed.";
+  return "";
+}
+
 /** Get next upcoming dates for a recurring event pattern */
 export function getNextRecurringDates(pattern: string, count: number = 3): string[] {
   const now = new Date();
