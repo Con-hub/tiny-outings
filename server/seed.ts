@@ -1,5 +1,5 @@
 import { db } from "./storage";
-import { events, places, userProfiles, sponsors } from "@shared/schema";
+import { events, places, userProfiles, sponsors, reactions, reviews } from "@shared/schema";
 import { newEvents, newPlaces } from "./seed-new-locations";
 import { realEvents, realPlaces } from "./seed-real-groups";
 
@@ -269,7 +269,83 @@ export function seedDatabase() {
     db.insert(sponsors).values(sponsor).run();
   }
 
+  // ============ SEED REACTIONS & REVIEWS ============
+  // Get all event IDs after insertion
+  const allInsertedEvents = db.select().from(events).all();
+  const eventIds = allInsertedEvents.map(e => e.id);
+
+  // Seed reactions for ~40% of events (varied counts)
+  const reactionNames = [
+    "sess_demo_anna", "sess_demo_claire", "sess_demo_emma", "sess_demo_sophie",
+    "sess_demo_rachel", "sess_demo_kate", "sess_demo_fiona", "sess_demo_laura",
+    "sess_demo_megan", "sess_demo_niamh", "sess_demo_siobhan", "sess_demo_aoife",
+    "sess_demo_ciara", "sess_demo_grace", "sess_demo_holly",
+  ];
+
+  let reactionCount = 0;
+  for (const eventId of eventIds) {
+    // ~40% of events get reactions
+    if (Math.random() > 0.40) continue;
+    const numBeenThere = Math.floor(Math.random() * 10) + 1; // 1-10
+    const numRecommend = Math.floor(Math.random() * Math.min(numBeenThere, 8)) + 1; // 1 to min(beenThere,8)
+    for (let i = 0; i < numBeenThere; i++) {
+      db.insert(reactions).values({
+        eventId,
+        type: "been_there",
+        sessionId: reactionNames[i % reactionNames.length] + "_" + eventId,
+        createdAt: new Date(Date.now() - Math.random() * 30 * 86400000).toISOString(),
+      }).run();
+      reactionCount++;
+    }
+    for (let i = 0; i < numRecommend; i++) {
+      db.insert(reactions).values({
+        eventId,
+        type: "recommend",
+        sessionId: reactionNames[i % reactionNames.length] + "_" + eventId,
+        createdAt: new Date(Date.now() - Math.random() * 30 * 86400000).toISOString(),
+      }).run();
+      reactionCount++;
+    }
+  }
+
+  // Seed reviews for ~20% of events (1-3 reviews each)
+  const reviewSnippets = [
+    { name: "Anna, mum of 1", text: "Lovely session, my wee one absolutely loved it" },
+    { name: "Claire, mum of 2", text: "So welcoming and relaxed, perfect for first-timers" },
+    { name: "Emma, Belfast mum", text: "We go every week now, brilliant for babies" },
+    { name: "Sophie, mum of twins", text: "Great space and the staff are really friendly" },
+    { name: "Rachel M", text: "My toddler didn't want to leave! Will definitely be back" },
+    { name: "Kate, new mum", text: "Met some lovely mums here, really helped with the loneliness" },
+    { name: "Fiona, mum of 3", text: "Affordable and fun, my pre-schooler asks to go every day" },
+    { name: "Laura, first-time mum", text: "Wish I'd found this sooner, such a lovely community" },
+    { name: "Niamh, Dublin mum", text: "Brilliant for sensory play, my baby was mesmerised" },
+    { name: "Siobhan", text: "Easy to get to with the buggy, nice and spacious" },
+    { name: "Aoife, mum of 1", text: "The singing was adorable, my little one clapped along" },
+    { name: "Grace, London mum", text: "A hidden gem, so glad a friend recommended it" },
+    { name: "Holly, Edinburgh mum", text: "Perfect rainy day activity, well organised too" },
+    { name: "Megan, Manchester mum", text: "We've been three times now, never disappoints" },
+    { name: "Ciara, Cork mum", text: "Lovely calm atmosphere, baby-friendly through and through" },
+  ];
+
+  let reviewCount = 0;
+  for (const eventId of eventIds) {
+    if (Math.random() > 0.20) continue;
+    const numReviews = Math.floor(Math.random() * 3) + 1; // 1-3 reviews
+    const shuffled = [...reviewSnippets].sort(() => Math.random() - 0.5);
+    for (let i = 0; i < numReviews; i++) {
+      const snippet = shuffled[i % shuffled.length];
+      db.insert(reviews).values({
+        eventId,
+        displayName: snippet.name,
+        text: snippet.text,
+        sessionId: "sess_demo_review_" + eventId + "_" + i,
+        createdAt: new Date(Date.now() - Math.random() * 30 * 86400000).toISOString(),
+      }).run();
+      reviewCount++;
+    }
+  }
+
   const totalEvents = seedEvents.length + newEvents.length + realEvents.length;
   const totalPlaces = seedPlaces.length + newPlaces.length + realPlaces.length;
-  console.log(`Seeded ${totalEvents} events, ${totalPlaces} places (including ${realEvents.length} real community groups), and ${seedSponsors.length} sponsors.`);
+  console.log(`Seeded ${totalEvents} events, ${totalPlaces} places (including ${realEvents.length} real community groups), ${seedSponsors.length} sponsors, ${reactionCount} reactions, and ${reviewCount} reviews.`);
 }

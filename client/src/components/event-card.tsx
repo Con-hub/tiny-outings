@@ -1,7 +1,7 @@
 import { Card } from "@/components/ui/card";
 import { AgeBandBadge } from "./age-band-badge";
 import { FeatureBadge } from "./feature-badge";
-import { MapPin, Clock, Navigation, Calendar } from "lucide-react";
+import { MapPin, Clock, Navigation, Calendar, Footprints, ThumbsUp } from "lucide-react";
 import {
   formatDistance, formatCost, getCategoryLabel,
   formatFriendlyDate, isHappeningNow, isStartingSoon,
@@ -12,9 +12,10 @@ import type { Event } from "@shared/schema";
 interface EventCardProps {
   event: Event & { distance?: number };
   onClick: () => void;
+  reactionCounts?: { beenThere: number; recommend: number };
 }
 
-export function EventCard({ event, onClick }: EventCardProps) {
+export function EventCard({ event, onClick, reactionCounts }: EventCardProps) {
   const ageBands: string[] = JSON.parse(event.ageBands);
   const features: string[] = JSON.parse(event.childFeatures);
   const happeningNow = isHappeningNow(event.date, event.startTime, event.endTime);
@@ -108,6 +109,24 @@ export function EventCard({ event, onClick }: EventCardProps) {
             {nextDates.length > 0 && (
               <span className="text-[11px] text-muted-foreground">
                 Next: {nextDates.join(" · ")}
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Community counts */}
+        {reactionCounts && (reactionCounts.beenThere > 0 || reactionCounts.recommend > 0) && (
+          <div className="flex items-center gap-3 text-xs text-muted-foreground" data-testid={`reaction-counts-${event.id}`}>
+            {reactionCounts.beenThere > 0 && (
+              <span className="inline-flex items-center gap-1">
+                <Footprints className="w-3 h-3" />
+                {reactionCounts.beenThere} been
+              </span>
+            )}
+            {reactionCounts.recommend > 0 && (
+              <span className="inline-flex items-center gap-1">
+                <ThumbsUp className="w-3 h-3" />
+                {reactionCounts.recommend} recommend
               </span>
             )}
           </div>

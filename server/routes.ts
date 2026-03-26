@@ -119,5 +119,50 @@ export async function registerRoutes(
     res.json(activeSponsors);
   });
 
+  // Reactions
+  app.get("/api/events/:id/reactions", async (req, res) => {
+    const eventId = parseInt(req.params.id);
+    const sessionId = (req.query.sessionId as string) || "";
+    const counts = await storage.getReactionCounts(eventId);
+    const hasBeenThere = sessionId ? await storage.hasReacted(eventId, sessionId, "been_there") : false;
+    const hasRecommended = sessionId ? await storage.hasReacted(eventId, sessionId, "recommend") : false;
+    res.json({ ...counts, hasBeenThere, hasRecommended });
+  });
+
+  app.post("/api/events/:id/reactions", async (req, res) => {
+    const eventId = parseInt(req.params.id);
+    const { type, sessionId } = req.body;
+    if (!type || !sessionId) return res.status(400).json({ message: "type and sessionId required" });
+    if (type !== "been_there" && type !== "recommend") return res.status(400).json({ message: "Invalid reaction type" });
+    const already = await storage.hasReacted(eventId, sessionId, type);
+    if (already) return res.status(409).json({ message: "Already reacted" });
+    const reaction = await storage.addReaction({ eventId, type, sessionId, createdAt: new Date().toISOString() });
+    const counts = await storage.getReactionCounts(eventId);
+    res.json({ reaction, ...counts });
+  });
+
+  // Batch reaction counts (for event cards)
+  app.get("/api/reaction-counts", async (req, res) => {
+    const ids = (req.query.ids as string || "").split(",").map(Number).filter(Boolean);
+    const counts = await storage.getEventReactionCounts(ids);
+    res.json(counts);
+  });
+
+  // Reviews
+  app.get("/api/events/:id/reviews", async (req, res) => {
+    const eventId = parseInt(req.params.id);
+    const eventReviews = await storage.getReviews(eventId);
+    res.json(eventReviews);
+  });
+
+  app.post("/api/events/:id/reviews", async (req, res) => {
+    const eventId = parseInt(req.params.id);
+    const { displayName, text, sessionId } = req.body;
+    if (!displayName || !text || !sessionId) return res.status(400).json({ message: "displayName, text, and sessionId required" });
+    if (text.length > 200) return res.status(400).json({ message: "Review too long (max 200 chars)" });
+    const review = await storage.addReview({ eventId, displayName, text, sessionId, createdAt: new Date().toISOString() });
+    res.json(review);
+  });
+
   return httpServer;
 }

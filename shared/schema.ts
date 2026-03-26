@@ -66,6 +66,23 @@ export const sponsors = sqliteTable("sponsors", {
   isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
 });
 
+export const reactions = sqliteTable("reactions", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  eventId: integer("event_id").notNull(),
+  type: text("type").notNull(), // "been_there" | "recommend"
+  sessionId: text("session_id").notNull(), // anonymous session fingerprint
+  createdAt: text("created_at").notNull(),
+});
+
+export const reviews = sqliteTable("reviews", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  eventId: integer("event_id").notNull(),
+  displayName: text("display_name").notNull(), // e.g. "Sarah, mum of 2"
+  text: text("text").notNull(),
+  sessionId: text("session_id").notNull(),
+  createdAt: text("created_at").notNull(),
+});
+
 export const favourites = sqliteTable("favourites", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   userId: integer("user_id").notNull(),
@@ -78,6 +95,8 @@ export const insertPlaceSchema = createInsertSchema(places).omit({ id: true });
 export const insertProfileSchema = createInsertSchema(userProfiles).omit({ id: true });
 export const insertFavouriteSchema = createInsertSchema(favourites).omit({ id: true });
 export const insertSponsorSchema = createInsertSchema(sponsors).omit({ id: true });
+export const insertReactionSchema = createInsertSchema(reactions).omit({ id: true });
+export const insertReviewSchema = createInsertSchema(reviews).omit({ id: true });
 
 export type Event = typeof events.$inferSelect;
 export type InsertEvent = z.infer<typeof insertEventSchema>;
@@ -89,3 +108,7 @@ export type Favourite = typeof favourites.$inferSelect;
 export type InsertFavourite = z.infer<typeof insertFavouriteSchema>;
 export type Sponsor = typeof sponsors.$inferSelect;
 export type InsertSponsor = z.infer<typeof insertSponsorSchema>;
+export type Reaction = typeof reactions.$inferSelect;
+export type InsertReaction = z.infer<typeof insertReactionSchema>;
+export type Review = typeof reviews.$inferSelect;
+export type InsertReview = z.infer<typeof insertReviewSchema>;

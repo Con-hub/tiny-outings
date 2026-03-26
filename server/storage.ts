@@ -4,6 +4,8 @@ import {
   type UserProfile, type InsertProfile, userProfiles,
   type Favourite, type InsertFavourite, favourites,
   type Sponsor, type InsertSponsor, sponsors,
+  type Reaction, type InsertReaction, reactions,
+  type Review, type InsertReview, reviews,
 } from "@shared/schema";
 import { drizzle } from "drizzle-orm/better-sqlite3";
 import Database from "better-sqlite3";
@@ -74,6 +76,21 @@ sqlite.exec(`
     logo_emoji TEXT NOT NULL DEFAULT '🏪',
     is_active INTEGER NOT NULL DEFAULT 1
   );
+  CREATE TABLE IF NOT EXISTS reactions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    event_id INTEGER NOT NULL,
+    type TEXT NOT NULL,
+    session_id TEXT NOT NULL,
+    created_at TEXT NOT NULL
+  );
+  CREATE TABLE IF NOT EXISTS reviews (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    event_id INTEGER NOT NULL,
+    display_name TEXT NOT NULL,
+    text TEXT NOT NULL,
+    session_id TEXT NOT NULL,
+    created_at TEXT NOT NULL
+  );
   CREATE TABLE IF NOT EXISTS favourites (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
@@ -131,6 +148,16 @@ export interface IStorage {
   // Sponsors
   getActiveSponsors(): Promise<Sponsor[]>;
   createSponsor(sponsor: InsertSponsor): Promise<Sponsor>;
+
+  // Reactions
+  getReactionCounts(eventId: number): Promise<{ beenThere: number; recommend: number }>;
+  addReaction(reaction: InsertReaction): Promise<Reaction>;
+  hasReacted(eventId: number, sessionId: string, type: string): Promise<boolean>;
+  getEventReactionCounts(eventIds: number[]): Promise<Record<number, { beenThere: number; recommend: number }>>;
+
+  // Reviews
+  getReviews(eventId: number): Promise<Review[]>;
+  addReview(review: InsertReview): Promise<Review>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -339,6 +366,46 @@ export class DatabaseStorage implements IStorage {
 
   async createSponsor(sponsor: InsertSponsor): Promise<Sponsor> {
     return db.insert(sponsors).values(sponsor).returning().get();
+  }
+
+  async getReactionCounts(eventId: number): Promise<{ beenThere: number; recommend: number }> {
+    const all = db.select().from(reactions).where(eq(reactions.eventId, eventId)).all();
+    return {
+      beenThere: all.filter(r => r.type === "been_there").length,
+      recommend: all.filter(r => r.type === "recommend").length,
+    };
+  }
+
+  async addReaction(reaction: InsertReaction): Promise<Reaction> {
+    return db.insert(reactions).values(reaction).returning().get();
+  }
+
+  async hasReacted(eventId: number, sessionId: string, type: string): Promise<boolean> {
+    const r = db.select().from(reactions)
+      .where(and(eq(reactions.eventId, eventId), eq(reactions.sessionId, sessionId), eq(reactions.type, type))).get();
+    return !!r;
+  }
+
+  async getEventReactionCounts(eventIds: number[]): Promise<Record<number, { beenThere: number; recommend: number }>> {
+    if (eventIds.length === 0) return {};
+    const all = db.select().from(reactions).all();
+    const result: Record<number, { beenThere: number; recommend: number }> = {};
+    for (const id of eventIds) {
+      const forEvent = all.filter(r => r.eventId === id);
+      result[id] = {
+        beenThere: forEvent.filter(r => r.type === "been_there").length,
+        recommend: forEvent.filter(r => r.type === "recommend").length,
+      };
+    }
+    return result;
+  }
+
+  async getReviews(eventId: number): Promise<Review[]> {
+    return db.select().from(reviews).where(eq(reviews.eventId, eventId)).all();
+  }
+
+  async addReview(review: InsertReview): Promise<Review> {
+    return db.insert(reviews).values(review).returning().get();
   }
 }
 

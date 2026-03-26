@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import { EventCard } from "@/components/event-card";
 import { PlaceCard } from "@/components/place-card";
 import { FilterBar } from "@/components/filter-bar";
@@ -98,6 +99,25 @@ export default function HomePage() {
     return groups;
   }, [displayEvents]);
 
+  // Collect all event IDs for batch reaction count fetch
+  const allEventIds = useMemo(() => {
+    const ids = new Set<number>();
+    if (events) events.forEach(e => ids.add(e.id));
+    if (todayEvents) todayEvents.forEach(e => ids.add(e.id));
+    if (featured) featured.events.forEach(e => ids.add(e.id));
+    return Array.from(ids);
+  }, [events, todayEvents, featured]);
+
+  const { data: reactionCounts } = useQuery<Record<number, { beenThere: number; recommend: number }>>({
+    queryKey: ["/api/reaction-counts", allEventIds.join(",")],
+    queryFn: async () => {
+      if (allEventIds.length === 0) return {};
+      const res = await apiRequest("GET", `/api/reaction-counts?ids=${allEventIds.join(",")}`);
+      return res.json();
+    },
+    enabled: allEventIds.length > 0,
+  });
+
   const showTodaySection = todayEvents && todayEvents.length > 0 && !search && !selectedCategory && selectedAgeBands.length === 0 && !selectedDay;
 
   return (
@@ -113,7 +133,7 @@ export default function HomePage() {
           <div className="flex gap-3 overflow-x-auto no-scrollbar pb-1">
             {todayEvents!.slice(0, 8).map(event => (
               <div key={`today-${event.id}`} className="min-w-[280px] max-w-[280px] flex-shrink-0">
-                <EventCard event={event} onClick={() => setSelectedEvent(event)} />
+                <EventCard event={event} onClick={() => setSelectedEvent(event)} reactionCounts={reactionCounts?.[event.id]} />
               </div>
             ))}
           </div>
@@ -130,7 +150,7 @@ export default function HomePage() {
           <div className="flex gap-3 overflow-x-auto no-scrollbar pb-1">
             {featured!.events.map(event => (
               <div key={`fe-${event.id}`} className="min-w-[280px] max-w-[280px] flex-shrink-0">
-                <EventCard event={event} onClick={() => setSelectedEvent(event)} />
+                <EventCard event={event} onClick={() => setSelectedEvent(event)} reactionCounts={reactionCounts?.[event.id]} />
               </div>
             ))}
             {featured!.places.map(place => (
@@ -244,6 +264,7 @@ export default function HomePage() {
                   key={event.id}
                   event={event}
                   onClick={() => setSelectedEvent(event)}
+                  reactionCounts={reactionCounts?.[event.id]}
                 />
               ))}
             </div>
@@ -256,6 +277,7 @@ export default function HomePage() {
                 key={event.id}
                 event={event}
                 onClick={() => setSelectedEvent(event)}
+                reactionCounts={reactionCounts?.[event.id]}
               />
             ))}
           </div>
