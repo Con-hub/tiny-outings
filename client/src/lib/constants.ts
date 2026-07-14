@@ -274,3 +274,25 @@ export function getNextRecurringDates(pattern: string, count: number = 3): strin
 
   return dates;
 }
+
+// ── Term-time / summer helpers ─────────────────────────────────────────────
+
+/** Returns true if the event's recurrence pattern indicates it is term-time only */
+export function isTermTimeEvent(recurrencePattern: string | null | undefined): boolean {
+  if (!recurrencePattern) return false;
+  return recurrencePattern.toLowerCase().includes("term time") ||
+         recurrencePattern.toLowerCase().includes("term-time");
+}
+
+/** Returns true if the current date falls within NI/Irish school summer holidays
+ *  (roughly late June – late August). Used to show a warning on term-time events. */
+export function isDuringSummerHolidays(): boolean {
+  const now = new Date();
+  const month = now.getMonth(); // 0-indexed
+  const day = now.getDate();
+  // June 26 – August 29 (conservative range covering NI + ROI summers)
+  if (month === 5 && day >= 26) return true; // late June
+  if (month === 6) return true;              // July
+  if (month === 7 && day <= 29) return true; // August up to 29th
+  return false;
+}

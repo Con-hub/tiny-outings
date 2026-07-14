@@ -9,6 +9,54 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { DISTANCE_OPTIONS } from "@/lib/constants";
 import type { UserProfile } from "@shared/schema";
 
+// UK/Ireland date input that shows dd/mm/yyyy but stores YYYY-MM-DD internally
+function DobInput({ value, onChange }: { value: string | null; onChange: (v: string | null) => void }) {
+  // Display state: always dd/mm/yyyy
+  const toDisplay = (iso: string | null) => {
+    if (!iso) return "";
+    const [y, m, d] = iso.split("-");
+    return `${d}/${m}/${y}`;
+  };
+  const [display, setDisplay] = useState(toDisplay(value));
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let raw = e.target.value.replace(/[^0-9/]/g, "");
+    // Auto-insert slashes
+    if (raw.length === 2 && !raw.includes("/")) raw = raw + "/";
+    if (raw.length === 5 && raw.split("/").length === 2) raw = raw + "/";
+    setDisplay(raw);
+    // Try to parse when we have a full date dd/mm/yyyy
+    const parts = raw.split("/");
+    if (parts.length === 3 && parts[0].length === 2 && parts[1].length === 2 && parts[2].length === 4) {
+      const [d, m, y] = parts;
+      const iso = `${y}-${m}-${d}`;
+      const date = new Date(iso);
+      const now = new Date();
+      if (!isNaN(date.getTime()) && date <= now) {
+        onChange(iso);
+        return;
+      }
+    }
+    // If cleared
+    if (raw === "") onChange(null);
+  };
+
+  return (
+    <div className="relative">
+      <input
+        type="text"
+        inputMode="numeric"
+        placeholder="dd/mm/yyyy"
+        value={display}
+        onChange={handleChange}
+        maxLength={10}
+        className="w-full px-3 py-2.5 rounded-xl bg-background border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+        data-testid="profile-dob"
+      />
+    </div>
+  );
+}
+
 export default function ProfilePage() {
   const { data: profile } = useQuery<UserProfile>({ queryKey: ["/api/profile"] });
   const [locOpen, setLocOpen] = useState(false);
@@ -94,29 +142,13 @@ export default function ProfilePage() {
             <p className="text-xs text-muted-foreground">Helps show the right age band</p>
           </div>
         </div>
-        {/* Child name */}
-        <input
-          type="text"
-          placeholder="Child's name (optional)"
-          value={(profile as any).childName || ""}
-          onChange={(e) => updateProfile({ childName: e.target.value || null } as any)}
-          className="w-full px-3 py-2.5 rounded-xl bg-background border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 mb-2"
-          data-testid="profile-child-name"
-        />
-        {/* Child DOB */}
-        <input
-          type="date"
-          value={profile.childDob || ""}
-          onChange={(e) => updateProfile({ childDob: e.target.value || null } as any)}
-          className="w-full px-3 py-2.5 rounded-xl bg-background border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-          data-testid="profile-dob"
-          max={new Date().toISOString().split("T")[0]}
-        />
+        {/* Child DOB — UK/Ireland dd/mm/yyyy format */}
+        <DobInput value={profile.childDob || null} onChange={(v) => updateProfile({ childDob: v } as any)} />
         {profile.childDob && childAgeBand && (
           <div className="flex items-center gap-2 mt-3">
             <AgeBandBadge band={childAgeBand} />
             <span className="text-sm text-muted-foreground">
-              {(profile as any).childName ? `${(profile as any).childName} is ` : ""}{getChildAge()}
+              {getChildAge()}
             </span>
           </div>
         )}

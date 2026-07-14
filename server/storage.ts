@@ -228,7 +228,8 @@ export class DatabaseStorage implements IStorage {
           allEvents = allEvents.filter(e => e.date === tomorrow || recursFallsOnDay(e, tomorrowDayNum));
           break;
         }
-        case "this-week": {
+        case "this-week":
+        case "thisweek": {
           // Collect the day numbers for the next 7 days
           const weekDays = Array.from({ length: 7 }, (_, i) => (dayOfWeek + i) % 7);
           allEvents = allEvents.filter(e => (e.date >= today && e.date <= weekEnd) || recursFallsOnAny(e, weekDays));
@@ -372,7 +373,35 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getFeatured(lat: number, lng: number): Promise<{ events: (Event & { distance?: number })[]; places: (Place & { distance?: number })[] }> {
-    const allEvents = db.select().from(events).all().filter(e => e.isFeatured);
+    const now = new Date();
+    const today = now.toISOString().split("T")[0];
+    const dayOfWeek = now.getDay();
+    const DAY_NAMES = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+    const todayName = DAY_NAMES[dayOfWeek];
+    // Two-week lookahead window for Our Picks
+    const twoWeeksOut = new Date(now.getTime() + 14 * 86400000).toISOString().split("T")[0];
+
+    const isUpcomingOrRecurringToday = (e: Event): boolean => {
+      if (e.recurring && e.recurrencePattern) {
+        const pattern = e.recurrencePattern.toLowerCase();
+        // Daily/every day — always upcoming
+        if (pattern.includes("every day") || pattern.includes("daily")) return true;
+        // Falls on today's weekday name
+        if (pattern.includes(todayName)) return true;
+        // Falls on another weekday that is in the next 14 days — always show
+        for (const day of DAY_NAMES) {
+          if (pattern.includes(day)) return true;
+        }
+        // Weekly recurring based on event's own date weekday
+        if (pattern.includes("weekly") || pattern.includes("every week")) return true;
+        return false;
+      }
+      // One-off event: only show if the date is today or in the future (within 14 days)
+      return e.date >= today && e.date <= twoWeeksOut;
+    };
+
+    const allEvents = db.select().from(events).all()
+      .filter(e => e.isFeatured && isUpcomingOrRecurringToday(e));
     const allPlaces = db.select().from(places).all().filter(p => p.isFeatured);
 
     const eventsWithDist = allEvents.map(e => ({

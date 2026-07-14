@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { AgeBandBadge } from "./age-band-badge";
 import { FeatureBadge } from "./feature-badge";
 import { Heart, MapPin, Clock, Navigation, ExternalLink, Calendar, RotateCw, Share2, CalendarPlus } from "lucide-react";
-import { formatDistance, formatCost, getCategoryLabel, formatFriendlyDate, getNextRecurringDates, generateICS, downloadFile, getHelperSentence, getNextOccurrenceDate } from "@/lib/constants";
+import { formatDistance, formatCost, getCategoryLabel, formatFriendlyDate, getNextRecurringDates, generateICS, downloadFile, getHelperSentence, getNextOccurrenceDate, isTermTimeEvent, isDuringSummerHolidays } from "@/lib/constants";
 import { apiRequest } from "@/lib/queryClient";
 import { queryClient } from "@/lib/queryClient";
 import { useQuery } from "@tanstack/react-query";
@@ -139,6 +139,16 @@ export function DetailSheet({ open, onClose, event, place }: DetailSheetProps) {
                       Next: {nextDates.join(" · ")}
                     </span>
                   )}
+                </div>
+              )}
+              {/* Summer holiday warning */}
+              {isTermTimeEvent(event!.recurrencePattern) && isDuringSummerHolidays() && (
+                <div className="flex items-start gap-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 px-3.5 py-3">
+                  <span className="text-base mt-0.5">⚠️</span>
+                  <div className="flex flex-col gap-0.5">
+                    <p className="text-xs font-bold text-amber-800 dark:text-amber-300">May not run during summer</p>
+                    <p className="text-xs text-amber-700 dark:text-amber-400 leading-relaxed">This group usually runs during term time only. Check the organiser's website or social media before visiting.</p>
+                  </div>
                 </div>
               )}
             </div>

@@ -3,6 +3,7 @@ import { AgeBandBadge } from "./age-band-badge";
 import { MapPin, Clock, Calendar } from "lucide-react";
 import {
   formatCost, formatFriendlyDate, pickCardBadge, getNextOccurrenceDate,
+  isTermTimeEvent, isDuringSummerHolidays,
 } from "@/lib/constants";
 import type { Event } from "@shared/schema";
 
@@ -76,7 +77,7 @@ export function EventCard({ event, onClick, compact }: EventCardProps) {
           </span>
         </div>
 
-        {/* Price anchored bottom-right */}
+        {/* Recurrence + price row */}
         <div className="flex items-center justify-between">
           {event.recurring && event.recurrencePattern && (
             <span className="text-[11px] text-primary font-medium truncate max-w-[60%]">
@@ -87,6 +88,14 @@ export function EventCard({ event, onClick, compact }: EventCardProps) {
             {formatCost(event.cost, event.currency, event.isFree)}
           </span>
         </div>
+        {/* Summer warning for term-time events */}
+        {isTermTimeEvent(event.recurrencePattern) && isDuringSummerHolidays() && (
+          <div className="mt-1">
+            <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-full px-2 py-0.5">
+              ⚠️ May not run during summer — check before visiting
+            </span>
+          </div>
+        )}
       </div>
     </Card>
   );

@@ -1,5 +1,5 @@
 import { Link, useRoute } from "wouter";
-import { Home, Compass, Heart, User, MapPin, Sun, Moon } from "lucide-react";
+import { Home, MapPin as MapPinIcon, Heart, User, MapPin, Sun, Moon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
@@ -11,7 +11,7 @@ import type { UserProfile } from "@shared/schema";
 
 const TABS = [
   { path: "/", label: "Home", icon: Home },
-  { path: "/explore", label: "Explore", icon: Compass },
+  { path: "/explore", label: "Places", icon: MapPinIcon },
   { path: "/favourites", label: "Saved", icon: Heart },
   { path: "/profile", label: "Profile", icon: User },
 ];

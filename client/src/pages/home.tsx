@@ -7,12 +7,13 @@ import { FilterBar } from "@/components/filter-bar";
 import { RadiusPicker } from "@/components/radius-picker";
 import { DetailSheet } from "@/components/detail-sheet";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Sparkles, ArrowUpDown, Baby, Maximize2, ChevronRight } from "lucide-react";
+import { Sparkles, ArrowUpDown, Baby, Maximize2, ChevronRight, Calendar, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatGroupDate, DISTANCE_OPTIONS } from "@/lib/constants";
 import type { Event, Place, UserProfile, Sponsor } from "@shared/schema";
 
-type QuickFilter = "today" | "weekend" | "free" | "indoor" | null;
+type QuickFilter = "today" | "thisweek" | "weekend" | "free" | "indoor" | null;
+type AgeBandFilter = "baby" | "toddler" | "preschooler";
 
 export default function HomePage() {
   const { data: profile } = useQuery<UserProfile>({ queryKey: ["/api/profile"] });
@@ -25,11 +26,16 @@ export default function HomePage() {
   const [selectedEvent, setSelectedEvent] = useState<(Event & { distance?: number }) | null>(null);
   const [selectedPlace, setSelectedPlace] = useState<(Place & { distance?: number }) | null>(null);
   const [quickFilter, setQuickFilter] = useState<QuickFilter>(null);
+  const [quickAgeBand, setQuickAgeBand] = useState<AgeBandFilter | null>(null);
   const [showAllFeatured, setShowAllFeatured] = useState(false);
 
   // Apply quick filter to main query params
-  const effectiveDay = quickFilter === "today" ? "today" : quickFilter === "weekend" ? "weekend" : selectedDay;
+  const effectiveDay = quickFilter === "today" ? "today" : quickFilter === "thisweek" ? "thisweek" : quickFilter === "weekend" ? "weekend" : selectedDay;
   const effectiveFree = quickFilter === "free" ? true : freeOnly;
+  // Merge quick age band with manual age band selection
+  const effectiveAgeBands = quickAgeBand
+    ? selectedAgeBands.includes(quickAgeBand) ? selectedAgeBands : [quickAgeBand, ...selectedAgeBands]
+    : selectedAgeBands;
 
   const queryParams = new URLSearchParams();
   if (profile) {
@@ -37,7 +43,7 @@ export default function HomePage() {
     queryParams.set("lng", String(profile.locationLng));
     queryParams.set("radius", String(profile.distanceRadius));
   }
-  if (selectedAgeBands.length > 0) queryParams.set("ageBands", selectedAgeBands.join(","));
+  if (effectiveAgeBands.length > 0) queryParams.set("ageBands", effectiveAgeBands.join(","));
   if (selectedCategory) queryParams.set("category", selectedCategory);
   if (effectiveDay) queryParams.set("day", effectiveDay);
   if (effectiveFree) queryParams.set("free", "true");
@@ -66,12 +72,16 @@ export default function HomePage() {
     } else {
       setQuickFilter(filter);
       // Clear conflicting manual filters
-      if (filter === "today" || filter === "weekend") setSelectedDay(null);
+      if (filter === "today" || filter === "thisweek" || filter === "weekend") setSelectedDay(null);
       if (filter === "free") setFreeOnly(false);
     }
   };
 
-  const hasActiveFilters = search || selectedCategory || selectedAgeBands.length > 0 || selectedDay || quickFilter;
+  const handleQuickAgeBand = (band: AgeBandFilter) => {
+    setQuickAgeBand(prev => prev === band ? null : band);
+  };
+
+  const hasActiveFilters = search || selectedCategory || selectedAgeBands.length > 0 || selectedDay || quickFilter || quickAgeBand;
   const showFeatured = featured && (featured.events.length > 0 || featured.places.length > 0) && !hasActiveFilters;
 
   // Limit featured to 3-5 items
@@ -120,10 +130,11 @@ export default function HomePage() {
         Calm days out for you and your little one
       </p>
 
-      {/* Quick filter chips — always visible */}
+      {/* Quick filter chips — day/type */}
       <div className="flex gap-2 overflow-x-auto no-scrollbar" data-testid="quick-filters">
         {([
           { id: "today" as const, label: "Today" },
+          { id: "thisweek" as const, label: "This Week" },
           { id: "weekend" as const, label: "Weekend" },
           { id: "free" as const, label: "Free" },
           { id: "indoor" as const, label: "Indoor" },
@@ -137,6 +148,28 @@ export default function HomePage() {
                 : "bg-card text-muted-foreground border-border hover:border-primary/30"
             }`}
             data-testid={`quick-filter-${chip.id}`}
+          >
+            {chip.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Age band quick chips */}
+      <div className="flex gap-2 overflow-x-auto no-scrollbar -mt-1" data-testid="age-quick-filters">
+        {([
+          { id: "baby" as const, label: "👶 Baby", desc: "0–12m" },
+          { id: "toddler" as const, label: "🧒 Toddler", desc: "1–3y" },
+          { id: "preschooler" as const, label: "🎒 Pre-schooler", desc: "3–5y" },
+        ]).map(chip => (
+          <button
+            key={chip.id}
+            onClick={() => handleQuickAgeBand(chip.id)}
+            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[13px] font-semibold whitespace-nowrap border transition-colors min-h-[36px] ${
+              quickAgeBand === chip.id
+                ? "bg-primary text-primary-foreground border-primary"
+                : "bg-card text-muted-foreground border-border hover:border-primary/30"
+            }`}
+            data-testid={`age-filter-${chip.id}`}
           >
             {chip.label}
           </button>
@@ -195,9 +228,13 @@ export default function HomePage() {
         <h2 className="font-bold text-sm text-muted-foreground">
           {effectiveDay === "today" ? "Today" :
            effectiveDay === "tomorrow" ? "Tomorrow" :
+           effectiveDay === "thisweek" ? "This Week" :
            effectiveDay === "weekend" ? "This Weekend" :
            quickFilter === "indoor" ? "Indoor Events" :
            quickFilter === "free" ? "Free Events" :
+           quickAgeBand === "baby" ? "Baby Events" :
+           quickAgeBand === "toddler" ? "Toddler Events" :
+           quickAgeBand === "preschooler" ? "Pre-schooler Events" :
            "Upcoming"}
           {events ? ` (${displayEvents.length})` : ""}
         </h2>
@@ -238,46 +275,64 @@ export default function HomePage() {
           </div>
         )}
         {events && displayEvents.length === 0 && (
-          <div className="flex flex-col items-center text-center py-14 gap-3.5" data-testid="empty-state-events">
-            <div className="w-14 h-14 rounded-full bg-accent flex items-center justify-center">
-              <Baby className="w-6 h-6 text-muted-foreground/60" />
+          <div className="flex flex-col items-center text-center py-12 gap-4" data-testid="empty-state-events">
+            <div className="w-16 h-16 rounded-full bg-accent flex items-center justify-center">
+              <Search className="w-7 h-7 text-muted-foreground/50" />
             </div>
-            <div className="flex flex-col gap-1.5 max-w-[280px]">
-              <p className="text-sm font-semibold text-foreground">
-                Nothing here yet
+            <div className="flex flex-col gap-2 max-w-[300px]">
+              <p className="text-sm font-bold text-foreground">
+                Nothing found
               </p>
               <p className="text-xs text-muted-foreground leading-relaxed">
-                {quickFilter
-                  ? "Try a different filter or clear your selection to see more."
-                  : (profile?.distanceRadius || 5) < 50
-                    ? "Try widening your search radius or clearing some filters."
-                    : "Try a different day or clearing some filters. There's always something fun to discover."}
+                {quickFilter === "today"
+                  ? "Nothing on today matching your filters — try This Week to see what's coming up."
+                  : quickFilter === "thisweek"
+                  ? "Nothing this week nearby — try widening your search radius or removing an age filter."
+                  : quickAgeBand
+                  ? `No ${quickAgeBand} events with these filters — try removing the age filter or choosing This Week.`
+                  : (profile?.distanceRadius || 5) < 25
+                  ? "Try widening your search radius to find more events nearby."
+                  : "Try removing a filter or choosing a different week."}
               </p>
-              {!quickFilter && (profile?.distanceRadius || 5) < 50 && (
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  className="mt-2 mx-auto"
-                  onClick={async () => {
-                    const currentRadius = profile?.distanceRadius || 5;
-                    const allOpts = [...DISTANCE_OPTIONS];
-                    const nextRadius = allOpts.find(d => d > currentRadius) || allOpts[allOpts.length - 1];
-                    await apiRequest("PUT", "/api/profile", { distanceRadius: nextRadius });
-                    queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
-                    queryClient.invalidateQueries({ queryKey: ["/api/events"] });
-                    queryClient.invalidateQueries({ queryKey: ["/api/places"] });
-                    queryClient.invalidateQueries({ queryKey: ["/api/featured"] });
-                  }}
-                  data-testid="increase-radius"
-                >
-                  <Maximize2 className="w-3.5 h-3.5 mr-1.5" />
-                  Widen to {(() => {
-                    const currentRadius = profile?.distanceRadius || 5;
-                    const allOpts = [...DISTANCE_OPTIONS];
-                    return allOpts.find(d => d > currentRadius) || allOpts[allOpts.length - 1];
-                  })()} miles
-                </Button>
-              )}
+              <div className="flex flex-col gap-2 mt-1">
+                {/* Smart suggestions based on active filter */}
+                {quickFilter === "today" && (
+                  <Button variant="secondary" size="sm" className="mx-auto" onClick={() => handleQuickFilter("thisweek")} data-testid="suggest-thisweek">
+                    <Calendar className="w-3.5 h-3.5 mr-1.5" />
+                    See This Week instead
+                  </Button>
+                )}
+                {quickAgeBand && (
+                  <Button variant="secondary" size="sm" className="mx-auto" onClick={() => setQuickAgeBand(null)} data-testid="clear-age-filter">
+                    Clear age filter
+                  </Button>
+                )}
+                {(profile?.distanceRadius || 5) < 50 && !quickFilter && (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="mx-auto"
+                    onClick={async () => {
+                      const currentRadius = profile?.distanceRadius || 5;
+                      const allOpts = [...DISTANCE_OPTIONS];
+                      const nextRadius = allOpts.find(d => d > currentRadius) || allOpts[allOpts.length - 1];
+                      await apiRequest("PUT", "/api/profile", { distanceRadius: nextRadius });
+                      queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
+                      queryClient.invalidateQueries({ queryKey: ["/api/events"] });
+                      queryClient.invalidateQueries({ queryKey: ["/api/places"] });
+                      queryClient.invalidateQueries({ queryKey: ["/api/featured"] });
+                    }}
+                    data-testid="increase-radius"
+                  >
+                    <Maximize2 className="w-3.5 h-3.5 mr-1.5" />
+                    Widen to {(() => {
+                      const currentRadius = profile?.distanceRadius || 5;
+                      const allOpts = [...DISTANCE_OPTIONS];
+                      return allOpts.find(d => d > currentRadius) || allOpts[allOpts.length - 1];
+                    })()} miles
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
         )}
